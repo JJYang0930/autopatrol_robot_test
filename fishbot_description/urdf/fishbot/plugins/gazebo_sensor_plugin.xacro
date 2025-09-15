@@ -1,0 +1,243 @@
+<?xml version="1.0"?>
+<!-- 
+激光雷达传感器插件配置文件
+功能：为机器人配置激光雷达传感器，包括：
+1. 激光扫描范围、分辨率设置
+2. 扫描距离范围设置
+3. 扫描噪声模型设置
+4. ROS话题发布配置
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- 
+    激光雷达传感器插件宏定义
+    使用方式：在机器人URDF文件中通过<xacro:gazebo_sensor_plugin/>调用
+    -->
+    <xacro:macro name="gazebo_sensor_plugin">
+        <!-- 传感器绑定到激光连杆 -->
+        <gazebo reference="laser_link">
+            <!-- 定义激光雷达传感器 -->
+            <sensor name="laserscan" type="ray">
+                <!-- 
+                Gazebo ROS激光雷达插件配置
+                插件类型：libgazebo_ros_ray_sensor.so
+                功能：模拟激光雷达传感器并发布ROS LaserScan消息
+                -->
+                <plugin name="laserscan" filename="libgazebo_ros_ray_sensor.so">
+                    <!-- ROS通信设置 -->
+                    <ros>
+                        <namespace>/</namespace>  <!-- 使用全局命名空间 -->
+                        <remapping>~/out:=scan</remapping>  <!-- 将原始输出重映射到/scan话题 -->
+                    </ros>
+                    <output_type>sensor_msgs/LaserScan</output_type>  <!-- 输出消息类型 -->
+                    <frame_name>laser_link</frame_name>  <!-- 传感器坐标系名称 -->
+                </plugin>
+
+                <!-- 传感器基本参数 -->
+                <always_on>true</always_on>  <!-- 传感器始终开启 -->
+                <visualize>true</visualize>  <!-- 在Gazebo中可视化激光束 -->
+                <update_rate>20</update_rate>  <!-- 更新频率5Hz -->
+                <pose>0 0 0 0 0 0</pose>  <!-- 传感器位置和姿态(相对于laser_link) -->
+
+                <!-- 激光传感器详细配置 -->
+                <ray>
+                    <!-- 水平扫描参数设置 -->
+                    <scan>
+                        <horizontal>
+                            <samples>480</samples>  <!-- 每圈360个采样点 -->
+                            <resolution>0.500000</resolution>  <!-- 角度分辨率1度 -->
+                            <min_angle>-3.141593</min_angle>  <!-- 最小角度0度(0弧度) -->
+                            <max_angle>3.141593</max_angle>  <!-- 最大角度360度(6.28弧度) -->
+                        </horizontal>
+                    </scan>
+
+                    <!-- 距离测量参数设置 -->
+                    <range>
+                        <min>0.120000</min>  <!-- 最小检测距离0.12米 -->
+                        <max>8</max>  <!-- 最大检测距离8米 -->
+                        <resolution>0.01</resolution>  <!-- 距离分辨率0.015米 -->
+                    </range>
+
+                    <!-- 测量噪声模型设置 -->
+                    <noise>
+                        <type>gaussian</type>  <!-- 高斯噪声模型 -->
+                        <mean>0.0</mean>  <!-- 噪声均值0 -->
+                        <stddev>0.01</stddev>  <!-- 噪声标准差0.01米 -->
+                    </noise>
+                </ray>
+            </sensor>
+        </gazebo>
+
+        <!-- 
+        IMU惯性测量单元传感器配置
+        功能：模拟6轴IMU(3轴加速度+3轴角速度)
+        发布话题：/imu (sensor_msgs/Imu)
+        坐标系：imu_link
+        -->
+        <gazebo reference="imu_link">
+            <!-- 定义IMU传感器 -->
+            <sensor name="imu_sensor" type="imu">
+                <!-- 
+                Gazebo ROS IMU插件配置
+                插件类型：libgazebo_ros_imu_sensor.so
+                功能：模拟IMU传感器并发布ROS Imu消息
+                -->
+                <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+                    <!-- ROS通信设置 -->
+                    <ros>
+                        <namespace>/</namespace>  <!-- 使用全局命名空间 -->
+                        <remapping>~/out:=imu</remapping>  <!-- 将原始输出重映射到/imu话题 -->
+                    </ros>
+                    <initial_orientation_as_reference>false</initial_orientation_as_reference>  <!-- 不使用初始方向作为参考 -->
+                </plugin>
+                <update_rate>100</update_rate>  <!-- 更新频率100Hz -->
+                <always_on>true</always_on>  <!-- 传感器始终开启 -->
+                
+                <!-- 
+                IMU噪声参数配置
+                包括角速度和线加速度的噪声模型
+                每个轴单独配置高斯噪声参数
+                -->
+                <imu>
+            <!-- 
+            角速度噪声参数配置
+            单位：弧度/秒(rad/s)
+            高斯噪声模型模拟IMU陀螺仪的测量误差
+            -->
+            <angular_velocity>
+                <!-- 
+                X轴角速度噪声配置
+                典型IMU噪声参数，模拟陀螺仪X轴测量误差
+                -->
+                <x>
+                    <noise type="gaussian">  <!-- 高斯(正态)分布噪声模型 -->
+                        <mean>0.0</mean>  <!-- 噪声均值，设为0表示无系统偏差 -->
+                        <stddev>2e-4</stddev>  <!-- 噪声标准差0.0002 rad/s，表示测量值的波动范围 -->
+                        <bias_mean>0.0000075</bias_mean>  <!-- 偏置均值7.5e-6 rad/s，表示长期存在的微小偏差 -->
+                        <bias_stddev>0.0000008</bias_stddev>  <!-- 偏置标准差8e-7 rad/s，表示偏置的波动范围 -->
+                    </noise>
+                </x>
+                <!-- 
+                Y轴角速度噪声配置
+                参数与X轴相同，保持各轴噪声特性一致
+                -->
+                <y>
+                    <noise type="gaussian">
+                        <mean>0.0</mean>
+                        <stddev>2e-4</stddev>
+                        <bias_mean>0.0000075</bias_mean>
+                        <bias_stddev>0.0000008</bias_stddev>
+                    </noise>
+                </y>
+                <!-- 
+                Z轴角速度噪声配置
+                参数与X/Y轴相同，保持各轴噪声特性一致
+                -->
+                <z>
+                    <noise type="gaussian">
+                        <mean>0.0</mean>
+                        <stddev>2e-4</stddev>
+                        <bias_mean>0.0000075</bias_mean>
+                        <bias_stddev>0.0000008</bias_stddev>
+                    </noise>
+                </z>
+            </angular_velocity>
+            
+            <!-- 
+            线加速度噪声参数配置
+            单位：米/秒²(m/s²)
+            高斯噪声模型模拟IMU加速度计的测量误差
+            -->
+            <linear_acceleration>
+                <!-- 
+                X轴线加速度噪声配置
+                典型IMU噪声参数，模拟加速度计X轴测量误差
+                -->
+                <x>
+                    <noise type="gaussian">  <!-- 高斯(正态)分布噪声模型 -->
+                        <mean>0.0</mean>  <!-- 噪声均值，设为0表示无系统偏差 -->
+                        <stddev>1.7e-2</stddev>  <!-- 噪声标准差0.017 m/s²，表示测量值的波动范围 -->
+                        <bias_mean>0.1</bias_mean>  <!-- 偏置均值0.1 m/s²，表示长期存在的固定偏差 -->
+                        <bias_stddev>0.001</bias_stddev>  <!-- 偏置标准差0.001 m/s²，表示偏置的波动范围 -->
+                    </noise>
+                </x>
+                <!-- 
+                Y轴线加速度噪声配置
+                参数与X轴相同，保持各轴噪声特性一致
+                -->
+                <y>
+                    <noise type="gaussian">
+                        <mean>0.0</mean>
+                        <stddev>1.7e-2</stddev>
+                        <bias_mean>0.1</bias_mean>
+                        <bias_stddev>0.001</bias_stddev>
+                    </noise>
+                </y>
+                <!-- 
+                Z轴线加速度噪声配置
+                参数与X/Y轴相同，保持各轴噪声特性一致
+                -->
+                <z>
+                    <noise type="gaussian">
+                        <mean>0.0</mean>
+                        <stddev>1.7e-2</stddev>
+                        <bias_mean>0.1</bias_mean>
+                        <bias_stddev>0.001</bias_stddev>
+                    </noise>
+                </z>
+            </linear_acceleration>
+        </imu>
+    </sensor>
+</gazebo>
+
+
+
+<!-- 
+深度相机传感器配置
+功能：模拟RGB-D相机(彩色+深度)
+发布话题：/camera/image_raw (sensor_msgs/Image)
+坐标系：camera_optical_link
+-->
+<gazebo reference="camera_link">
+    <!-- 定义深度相机传感器 -->
+    <sensor type="depth" name="camera_sensor">
+        <!-- 
+        Gazebo ROS相机插件配置
+        插件类型：libgazebo_ros_camera.so
+        功能：模拟相机传感器并发布ROS Image消息
+        -->
+        <plugin name="depth_camera" filename="libgazebo_ros_camera.so">
+            <!-- 相机光学坐标系名称 -->
+            <frame_name>camera_optical_link</frame_name>
+        </plugin>
+        
+        <!-- 传感器基本参数 -->
+        <always_on>true</always_on>  <!-- 传感器始终开启 -->
+        <update_rate>10</update_rate>  <!-- 更新频率10Hz -->
+        
+        <!-- 相机详细参数配置 -->
+        <camera name="camera">
+            <!-- 水平视场角(弧度) 1.5009831567≈86度 -->
+            <horizontal_fov>1.5009831567</horizontal_fov>
+            
+            <!-- 图像参数配置 -->
+            <image>
+                <width>800</width>  <!-- 图像宽度800像素 -->
+                <height>600</height>  <!-- 图像高度600像素 -->
+                <format>R8G8B8</format>  <!-- 图像格式：RGB 8位每通道 -->
+            </image>
+            
+            <!-- 镜头畸变参数配置 -->
+            <distortion>
+                <k1>0.0</k1>  <!-- 径向畸变系数1 -->
+                <k2>0.0</k2>  <!-- 径向畸变系数2 -->
+                <k3>0.0</k3>  <!-- 径向畸变系数3 -->
+                <p1>0.0</p1>  <!-- 切向畸变系数1 -->
+                <p2>0.0</p2>  <!-- 切向畸变系数2 -->
+                <center>0.5 0.5</center>  <!-- 畸变中心(图像中心) -->
+            </distortion>
+        </camera>
+    </sensor>
+</gazebo>
+
+    </xacro:macro>
+</robot>
